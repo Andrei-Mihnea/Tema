@@ -7,13 +7,12 @@ clients_lock = Lock()
 
 
 def comm_thread(conn,addr):
+    print(f"User connected with port {addr[1]} ")
+    conn.sendall(bytes(f"Connection succeeded!\nPlease change your name using the command --NAME=(your name)",encoding="ascii"))
+
+    with clients_lock:
+        clients[conn] = f"{addr[1]}"
     try:
-        print(f"User connected with port {addr[1]} ")
-        conn.sendall(bytes(f"Connection succeeded!\nPlease change your name using the command --NAME=(your name)",encoding="ascii"))
-
-        with clients_lock:
-            clients[conn] = f"{addr[1]}"
-
         while 1:
             try:
                 data = conn.recv(1024).decode("ascii")
@@ -24,7 +23,7 @@ def comm_thread(conn,addr):
                     print(f"User with name {clients[conn]} has disconnected from the server")
                     conn.sendall(bytes(f"User with name {clients[conn]} has disconnected from the server",encoding="ascii"))
                     break
-                
+                    
                 elif command.startswith("--NAME"):
                     new_name = command[7:].lower()
 
@@ -53,6 +52,7 @@ def comm_thread(conn,addr):
                             if target_conn:
                                 print(f"User {username} disconnected by admin")
                                 target_conn.sendall(bytes("You have been disconnected by the admin",encoding="ascii"))
+                                conn.sendall(bytes(f"{clients[target_conn]} will be disconnected",encoding="ascii"))
                                 target_conn.close()
                                 del clients[target_conn] 
                             else:
@@ -63,10 +63,10 @@ def comm_thread(conn,addr):
                 elif command.startswith("--HELP"):
                     conn.sendall(bytes("Use commands such as:\n --NAME=*new_name*(to change your name\n--EXIT to change your name",encoding="ascii"))
 
-                
+                    
                 else:
                     conn.sendall(bytes("Unkown command, try use help to get a list of all commands"))
-                
+                    
                 print("____________________________________________")
             except ConnectionResetError:
                     print(f"Connection interrupted abruptly from {clients.get(conn,addr[1])}")
@@ -74,13 +74,13 @@ def comm_thread(conn,addr):
             except Exception as e:
                 print(f"Error: {e}")
                 break
-    finally:
-            with clients_lock:
-                if conn in clients:
-                    print(f"Deleting traces for client {clients[conn]}")
-                    del clients[conn]
-            conn.close()
-            print("Connection closed")
+    except WindowsError:
+        with clients_lock:
+            if conn in clients:
+                print(f"Deleting traces for client {clients[conn]}")
+                del clients[conn]
+        conn.close()
+        print("Connection closed")
             
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

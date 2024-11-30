@@ -8,6 +8,7 @@ info = s.recv(1024).decode("ascii")
 print(info)
 try:
     while 1:
+
         command = input()
         s.sendall(bytes(command,encoding="ascii"))
 
@@ -20,5 +21,5 @@ try:
         time.sleep(1)
 except KeyboardInterrupt:
     print("\nDisconnecting client")
-    s.close()
+s.close()
 
